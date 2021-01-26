@@ -17,6 +17,7 @@ from keras.layers import LSTM
 from keras.layers import Lambda
 from keras.models import Model
 
+
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_PATH = os.path.join(ROOT_DIR, 'data')
 DATA_FILE_PATH = os.path.join(DATA_PATH, 'OxCGRT_latest.csv')
@@ -75,6 +76,7 @@ class XPrizePredictor(object):
 
     def __init__(self, path_to_model_weights=MODEL_WEIGHTS_FILE, data_url=DATA_FILE_PATH):
         if path_to_model_weights:
+
             # Load model weights
             nb_context = 1  # Only time series of new cases rate is used as context
             nb_action = len(NPI_COLUMNS)
@@ -86,7 +88,7 @@ class XPrizePredictor(object):
 
             # Make sure data is available to make predictions
             assert os.path.exists(DATA_FILE_PATH), \
-                f"Data file not found at {DATA_FILE_PATH}"
+                    f"Data file not found at {DATA_FILE_PATH}"
 
         self.df = self._prepare_dataframe(data_url)
 
@@ -132,8 +134,6 @@ class XPrizePredictor(object):
                 npis_gdf = npis_df[(npis_df.Date >= geo_start_date) & (npis_df.Date <= end_date)]
 
                 pred_new_cases = self._get_new_cases_preds(cdf, g, npis_gdf, country_samples)
-                print(f"{g} - {len(pred_new_cases)} - {sum(pred_new_cases)}")
-
 
             # Append forecast data to results to return
             country = npis_df[npis_df.GeoID == g].iloc[0].CountryName
