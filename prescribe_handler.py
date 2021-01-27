@@ -1,14 +1,24 @@
 import logging
+import multiprocessing
 import os
-import sys
 import time
-import pandas as pd
-import numpy as np
 from datetime import datetime
 from logging import info
 
+import numpy as np
+import pandas as pd
+
 from covid_xprize.examples.prescriptors.neat.utils import load_ips_file, add_geo_id, CASES_COL, IP_COLS, PRED_CASES_COL, \
     get_predictions, prepare_historical_df
+from prescribe_handler_process import prescribe_loop_for_geo
+
+THREADS = 2
+
+if not os.path.exists('logs'):
+    os.makedirs('logs')
+logging.basicConfig(level=logging.INFO, format='%(asctime)s\t%(levelname)s\t%(filename)s\t%(message)s')
+logging.getLogger().handlers = [logging.FileHandler(f"logs/prescribe-{time.strftime('%Y-%m-%d')}"),
+                                logging.StreamHandler()]
 
 
 def prescribe(start_date_str: str,
@@ -29,6 +39,7 @@ def prescribe(start_date_str: str,
     :return: Nothing. Saves the generated prescriptions to an output_file_path csv file
     See 2020-08-01_2020-08-04_prescriptions_example.csv for an example
     """
+
     info(
         f"prescribing [{start_date_str}-{end_date_str}] [{path_to_prior_ips_file}] [{path_to_cost_file}] [{output_file_path}]")
 
@@ -94,35 +105,15 @@ def prescribe(start_date_str: str,
         cost_arr = np.array(costs[IP_COLS])[0]
         geo_costs[geo] = cost_arr
 
-
-    print(geo_costs)
-
-
-def prescribe_iteration(geos):
-    # split by country / region
-    pass
+    # perform iterations while we have a time-budget
+    prescribe_loop(geos, geo_costs, past_cases, past_ips)
 
 
-def initialize():
-    LOG_FORMAT = '%(asctime)s\t%(levelname)s\t%(filename)s\t%(message)s'
-    for handler in logging.getLogger().handlers:
-        logging.getLogger().removeHandler(handler)
-
-    logging.getLogger().addHandler(logging.StreamHandler(sys.stdout))
-    logging.getLogger().setLevel(logging.INFO)
-    logFormatter = logging.Formatter(LOG_FORMAT)
-    rootLogger = logging.getLogger()
-
-    if not os.path.exists('logs'):
-        os.makedirs('logs')
-    date_str = time.strftime("%Y_%m_%d")
-    fileHandler = logging.FileHandler("{0}/{1}.log".format('./logs', f"prescribe-{date_str}"))
-    fileHandler.setFormatter(logFormatter)
-    rootLogger.addHandler(fileHandler)
-
-    consoleHandler = logging.StreamHandler()
-    consoleHandler.setFormatter(logFormatter)
-    rootLogger.addHandler(consoleHandler)
-
-
-initialize()
+def prescribe_loop(geos, geo_costs, past_cases, past_ips):
+    jobs = []
+    for geo in geos:
+        arguments = [geo, geo_costs[geo], past_cases[geo], past_ips[geo]]
+        jobs.append(arguments)
+    with multiprocessing.Pool(processes=THREADS) as pool:
+        results = pool.starmap(prescribe_loop_for_geo, jobs)
+    print(results)
