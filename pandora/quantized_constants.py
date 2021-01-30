@@ -17,6 +17,20 @@ H2_MAX = 3
 H3_MAX = 2
 H6_MAX = 4
 
+NPI_LIMITS = [C1_MAX,
+              C2_MAX,
+              C3_MAX,
+              C4_MAX,
+              C5_MAX,
+              C6_MAX,
+              C7_MAX,
+              C8_MAX,
+              H1_MAX,
+              H2_MAX,
+              H3_MAX,
+              H6_MAX]
+NPI_LIMITS_SIZE = len(NPI_LIMITS)
+
 C1 = "C1_School closing"
 C2 = "C2_Workplace closing"
 C3 = "C3_Cancel public events"
