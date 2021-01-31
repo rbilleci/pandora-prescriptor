@@ -28,7 +28,7 @@ class QuantizedPredictor(object):
                                                initial_action_input,
                                                future_action_sequence)
         total = 0.
-        for pred in pred_new_cases:
+        for pred in pred_new_cases[-number_of_days:]:
             total += pred
         return total
 
