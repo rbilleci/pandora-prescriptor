@@ -2,7 +2,7 @@ import logging
 import multiprocessing
 import os
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from logging import info
 
 import numpy as np
@@ -12,10 +12,10 @@ from covid_xprize.examples.prescriptors.neat.utils import load_ips_file, add_geo
     get_predictions, prepare_historical_df
 from covid_xprize.standard_predictor.xprize_predictor import ADDITIONAL_BRAZIL_CONTEXT, ADDITIONAL_UK_CONTEXT, \
     US_PREFIX, ADDITIONAL_US_STATES_CONTEXT, ADDITIONAL_CONTEXT_FILE
-from pandora.quantized_constants import NPI_LIMITS
+from pandora.quantized_constants import NPI_LIMITS, C1, H6, C2, C3, C4, C5, C6, C7, C8, H1, H2, H3
 from prescribe_handler_process import prescribe_loop_for_geo
 
-THREADS = 1
+THREADS = 2
 
 if not os.path.exists('logs'):
     os.makedirs('logs')
@@ -43,7 +43,7 @@ def prescribe(start_date_str: str,
     See 2020-08-01_2020-08-04_prescriptions_example.csv for an example
     """
     info(
-        f"prescribing [{start_date_str}-{end_date_str}] [{path_to_prior_ips_file}] [{path_to_cost_file}] [{output_file_path}]")
+        f"prescribe [{start_date_str}-{end_date_str}] [{path_to_prior_ips_file}] [{path_to_cost_file}] [{output_file_path}]")
 
     start_date = pd.to_datetime(start_date_str, format='%Y-%m-%d')
     end_date = pd.to_datetime(end_date_str, format='%Y-%m-%d')
@@ -114,19 +114,26 @@ def prescribe(start_date_str: str,
                    geo_costs,
                    past_cases,
                    past_ips,
-                   n_days)
+                   n_days,
+                   output_file_path,
+                   start_date,
+                   end_date)
 
 
 def prescribe_loop(geos,
                    geo_costs,
                    past_cases,
                    past_ips,
-                   n_days):
+                   n_days: int,
+                   output_file_path: str,
+                   start_date,
+                   end_date):
     jobs = []
     limits = NPI_LIMITS * n_days
     populations = load_populations(geos)
     for geo in geos:
         arguments = [geo,
+                     start_date,
                      geo_costs[geo],
                      past_cases[geo],
                      past_ips[geo],
@@ -136,7 +143,13 @@ def prescribe_loop(geos,
         jobs.append(arguments)
     with multiprocessing.Pool(processes=THREADS) as pool:
         results = pool.starmap(prescribe_loop_for_geo, jobs)
-    print(results)
+        df_output = pd.concat(results)
+    # Create the output directory if necessary.
+    info('writing output!')
+    output_dir = os.path.dirname(output_file_path)
+    if output_dir != '':
+        os.makedirs(output_dir, exist_ok=True)
+    df_output.to_csv(output_file_path, index=False)
 
 
 def load_populations(geos):

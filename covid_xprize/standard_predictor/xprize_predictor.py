@@ -17,7 +17,6 @@ from keras.layers import LSTM
 from keras.layers import Lambda
 from keras.models import Model
 
-
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_PATH = os.path.join(ROOT_DIR, 'data')
 DATA_FILE_PATH = os.path.join(DATA_PATH, 'OxCGRT_latest.csv')
@@ -76,7 +75,6 @@ class XPrizePredictor(object):
 
     def __init__(self, path_to_model_weights=MODEL_WEIGHTS_FILE, data_url=DATA_FILE_PATH):
         if path_to_model_weights:
-
             # Load model weights
             nb_context = 1  # Only time series of new cases rate is used as context
             nb_action = len(NPI_COLUMNS)
@@ -88,7 +86,7 @@ class XPrizePredictor(object):
 
             # Make sure data is available to make predictions
             assert os.path.exists(DATA_FILE_PATH), \
-                    f"Data file not found at {DATA_FILE_PATH}"
+                f"Data file not found at {DATA_FILE_PATH}"
 
         self.df = self._prepare_dataframe(data_url)
 
@@ -173,8 +171,8 @@ class XPrizePredictor(object):
             prev_new_cases,
             initial_total_cases,
             pop_size)
-
         return pred_new_cases
+
 
     def _prepare_dataframe(self, data_url: str) -> pd.DataFrame:
         """
@@ -355,7 +353,7 @@ class XPrizePredictor(object):
             action_sequence = future_action_sequence[d]
             action_input[:, -1] = action_sequence
             """ RB - changed to predict_on_batch """
-            pred = predictor.predict_on_batch([context_input, action_input])
+            pred = predictor.predict_on_batch([context_input.astype('float32'), action_input.astype('float32')])
             pred_output[d] = pred
             context_input[:, :-1] = context_input[:, 1:]
             context_input[:, -1] = pred
@@ -517,7 +515,6 @@ class XPrizePredictor(object):
 
     # Construct model
     def _construct_model(self, nb_context, nb_action, lstm_size=32, nb_lookback_days=21):
-
         # Create context encoder
         context_input = Input(shape=(nb_lookback_days, nb_context),
                               name='context_input')
