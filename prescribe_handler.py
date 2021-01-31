@@ -13,7 +13,8 @@ from covid_xprize.examples.prescriptors.neat.utils import load_ips_file, add_geo
 from covid_xprize.standard_predictor.xprize_predictor import ADDITIONAL_BRAZIL_CONTEXT, ADDITIONAL_UK_CONTEXT, \
     US_PREFIX, ADDITIONAL_US_STATES_CONTEXT, ADDITIONAL_CONTEXT_FILE
 from pandora.quantized_constants import NPI_LIMITS
-from prescribe_handler_process import prescribe_loop_for_geo
+from prescribe_handler_process import prescribe_loop_for_geo, PRESCRIPTION_CANDIDATES_PER_INDEX_RUN_1, \
+    PRESCRIPTION_CANDIDATES_PER_INDEX_RUN_2
 
 THREADS = 2
 
@@ -110,14 +111,26 @@ def prescribe(start_date_str: str,
         geo_costs[geo] = cost_arr
 
     # perform iterations while we have a time-budget
+    info(f"prescription run 1 started @ {datetime.now()}")
     prescribe_loop(geos,
                    geo_costs,
                    past_cases,
                    past_ips,
                    n_days,
                    output_file_path,
-                   start_date)
-    info(f"prescription ended @ {datetime.now()}")
+                   start_date,
+                   PRESCRIPTION_CANDIDATES_PER_INDEX_RUN_1)
+
+    info(f"prescription run 2 started @ {datetime.now()}")
+    prescribe_loop(geos,
+                   geo_costs,
+                   past_cases,
+                   past_ips,
+                   n_days,
+                   output_file_path,
+                   start_date,
+                   PRESCRIPTION_CANDIDATES_PER_INDEX_RUN_2)
+    info(f"prescription run 2 ended @ {datetime.now()}")
 
 
 def prescribe_loop(geos,
@@ -126,7 +139,8 @@ def prescribe_loop(geos,
                    past_ips,
                    n_days: int,
                    output_file_path: str,
-                   start_date):
+                   start_date,
+                   prescription_candidates_per_index: int):
     jobs = []
     limits = NPI_LIMITS * n_days
     populations = load_populations(geos)
@@ -138,7 +152,8 @@ def prescribe_loop(geos,
                      past_ips[geo],
                      n_days,
                      limits,
-                     populations[geo]]
+                     populations[geo],
+                     prescription_candidates_per_index]
         jobs.append(arguments)
     with multiprocessing.Pool(processes=THREADS) as pool:
         results = pool.starmap(prescribe_loop_for_geo, jobs)

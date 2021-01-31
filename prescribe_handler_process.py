@@ -18,7 +18,8 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s\t%(levelname)s\t%(fi
 logging.getLogger().handlers = [logging.FileHandler(f"logs/prescribe-{time.strftime('%Y-%m-%d')}"),
                                 logging.StreamHandler()]
 PRESCRIPTION_INDEXES = 10
-PRESCRIPTION_CANDIDATES_PER_INDEX = 50
+PRESCRIPTION_CANDIDATES_PER_INDEX_RUN_1 = 45  # keep it low enough to complete within 1 hour
+PRESCRIPTION_CANDIDATES_PER_INDEX_RUN_2 = 200  # for the additional 5 hours
 
 quantized_predictor = pandora.quantized_predictor.QuantizedPredictor()
 
@@ -30,7 +31,8 @@ def prescribe_loop_for_geo(geo: str,
                            past_ips: np.ndarray,
                            n_days: int,
                            limits: [int],
-                           population: int) -> pd.DataFrame:
+                           population: int,
+                           prescription_candidates_per_index: int) -> pd.DataFrame:
     info(f"{geo} searching for prescriptions...")
     loop_time_start = time.time_ns()
     factors = costs.tolist() * n_days
@@ -49,7 +51,7 @@ def prescribe_loop_for_geo(geo: str,
 
     # generate a set of plans
     prescriptions_by_index = plan_generator.generate_plans(PRESCRIPTION_INDEXES,
-                                                           PRESCRIPTION_CANDIDATES_PER_INDEX,
+                                                           prescription_candidates_per_index,
                                                            n_days,
                                                            factors,
                                                            limits)
@@ -140,6 +142,8 @@ def compute_context(geo: str,
 
 def evaluate_domination(prescriptions_by_index):
     for prescription_index, prescriptions in enumerate(prescriptions_by_index):
+        # NOTE: we could optimize this loop by sorting by estimated cases, then stringency
+        # so we could quickly break as soon as we are finding we are not dominating on cases
         for i, dominator in enumerate(prescriptions):
             for j, target in enumerate(prescriptions):
                 if i == j:
