@@ -149,6 +149,10 @@ def prescribe_loop(geos,
     output_dir = os.path.dirname(output_file_path)
     if output_dir != '':
         os.makedirs(output_dir, exist_ok=True)
+    df_output = df_output.sort_values(['PrescriptionIndex',
+                                       'CountryName',
+                                       'RegionName',
+                                       'Date'])
     df_output.to_csv(output_file_path, index=False)
 
 

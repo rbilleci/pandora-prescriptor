@@ -63,7 +63,7 @@ def prescribe_loop_for_geo(geo: str,
                 past_actions,
                 np.reshape(candidate_prescription.actions, (n_days, 12)))
             max_estimated_cases = max(max_estimated_cases, candidate_prescription.estimated_cases)
-            if i % 10 == 0:  # only log 1 of 10 plans, to reduce logging noise
+            if i % 50 == 49:  # only log 1 of 50 plans, to reduce logging noise
                 info(f"{geo} - {candidate_prescription.estimated_cases} {candidate_prescription.stringency}")
 
     # score the plans
