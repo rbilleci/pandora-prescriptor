@@ -31,7 +31,8 @@ def prescribe_loop_for_geo(geo: str,
                            n_days: int,
                            limits: [int],
                            population: int) -> pd.DataFrame:
-    info(f"{geo} - searching for prescriptions...")
+    info(f"{geo} searching for prescriptions...")
+    loop_time_start = time.time_ns()
     factors = costs.tolist() * n_days
     for i, f in enumerate(factors):
         factors[i] = f / limits[i] / n_days
@@ -53,7 +54,6 @@ def prescribe_loop_for_geo(geo: str,
                                                            factors,
                                                            limits)
     # evaluate the plans
-    max_estimated_cases = 1e-6  # avoid divide by zero
     for candidate_prescriptions in prescriptions_by_index:
         for i, candidate_prescription in enumerate(candidate_prescriptions):
             candidate_prescription.estimated_cases = quantized_predictor.predict_geo(
@@ -62,30 +62,24 @@ def prescribe_loop_for_geo(geo: str,
                 past_context,
                 past_actions,
                 np.reshape(candidate_prescription.actions, (n_days, 12)))
-            max_estimated_cases = max(max_estimated_cases, candidate_prescription.estimated_cases)
-            if i % 50 == 49:  # only log 1 of 50 plans, to reduce logging noise
-                info(f"{geo} - {candidate_prescription.estimated_cases} {candidate_prescription.stringency}")
 
-    # score the plans
-    for prescription_index, plans in enumerate(prescriptions_by_index):
-        # for low prescription indexes, we optimize for low stringency
-        # otherwise, we favor lower cases
-        stringency_weight = 2. * float(PRESCRIPTION_INDEXES - prescription_index) / float(PRESCRIPTION_INDEXES)
-        for plan in plans:
-            plan.score = (plan.estimated_cases / max_estimated_cases) * (stringency_weight * plan.stringency / 12.)
+    # score the plans using the same pareto domination logic
+    # the prescription with the highest score for its bucket is the lucky winner
+    evaluate_domination(prescriptions_by_index)
 
-    # find the best prescriptions for each prescription index
+    # find the best prescriptions
+    # for each prescription index
     best_prescriptions = []
-    for i, candidate_prescriptions in enumerate(prescriptions_by_index):
+    for i, prescriptions in enumerate(prescriptions_by_index):
         best = None
-        for candidate_prescription in candidate_prescriptions:
+        for prescription in prescriptions:
             if best is None:
-                best = candidate_prescription
-            elif candidate_prescription.score < best.score:
-                best = candidate_prescription
-            elif candidate_prescription.score == best.score and candidate_prescription.estimated_cases < best.estimated_cases:
-                best = candidate_prescription
-        info(f"{geo} - best index {i} - {best.estimated_cases} {best.stringency}")
+                best = prescription
+            elif prescription.score > best.score:
+                best = prescription
+            elif prescription.score == best.score and prescription.estimated_cases < best.estimated_cases:
+                best = prescription
+        info(f"{geo} index [{i}] - {best.estimated_cases} {best.stringency} {best.score}")
         best_prescriptions.append(best)
 
     # generate the dataframe we'll return
@@ -122,6 +116,9 @@ def prescribe_loop_for_geo(geo: str,
                                                         C1, C2, C3, C4, C5, C6, C7, C8, H1, H2, H3, H6,
                                                         'EstimatedCases',
                                                         'EstimatedScore'])
+    # add timing information
+    loop_time_end = time.time_ns()
+    info(f"{geo} took {(loop_time_end - loop_time_start) / 1e9} seconds")
     return df_prescriptions
 
 
@@ -139,3 +136,13 @@ def compute_context(geo: str,
     df['ProportionInfected'] = df['ConfirmedCases'] / df['Population']
     df['PredictionRatio'] = df['CaseRatio'] / (1 - df['ProportionInfected'])
     return df
+
+
+def evaluate_domination(prescriptions_by_index):
+    for prescription_index, prescriptions in enumerate(prescriptions_by_index):
+        for i, dominator in enumerate(prescriptions):
+            for j, target in enumerate(prescriptions):
+                if i == j:
+                    continue
+                if dominator.estimated_cases <= target.estimated_cases and dominator.stringency < target.stringency:
+                    dominator.score = dominator.score + 1.

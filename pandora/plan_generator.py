@@ -12,7 +12,7 @@ class Plan:
         self.days = days
         self.stringency = None
         self.estimated_cases = None
-        self.score = None
+        self.score = 0.
 
     def update_stringency(self, factors: [float]) -> None:
         stringency = 0.
