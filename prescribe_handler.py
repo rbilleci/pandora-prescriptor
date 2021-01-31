@@ -10,9 +10,12 @@ import pandas as pd
 
 from covid_xprize.examples.prescriptors.neat.utils import load_ips_file, add_geo_id, CASES_COL, IP_COLS, PRED_CASES_COL, \
     get_predictions, prepare_historical_df
+from covid_xprize.standard_predictor.xprize_predictor import ADDITIONAL_BRAZIL_CONTEXT, ADDITIONAL_UK_CONTEXT, \
+    US_PREFIX, ADDITIONAL_US_STATES_CONTEXT, ADDITIONAL_CONTEXT_FILE
+from pandora.quantized_constants import NPI_LIMITS
 from prescribe_handler_process import prescribe_loop_for_geo
 
-THREADS = 2
+THREADS = 1
 
 if not os.path.exists('logs'):
     os.makedirs('logs')
@@ -29,8 +32,8 @@ def prescribe(start_date_str: str,
     """
     Generates and saves a file with daily intervention plan prescriptions for the given countries, regions and prior
     intervention plans, between start_date and end_date, included.
-    :param start_date: day from which to start making prescriptions, as a string, format YYYY-MM-DDD
-    :param end_date: day on which to stop making prescriptions, as a string, format YYYY-MM-DDD
+    :param start_date_str: day from which to start making prescriptions, as a string, format YYYY-MM-DDD
+    :param end_date_str: day on which to stop making prescriptions, as a string, format YYYY-MM-DDD
     :param path_to_prior_ips_file: path to a csv file containing the intervention plans between inception date
     (Jan 1 2020) and end_date, for the countries and regions for which a prescription is needed
     :param path_to_cost_file: path to a csv file containing the cost of each individual intervention, per country
@@ -39,12 +42,13 @@ def prescribe(start_date_str: str,
     :return: Nothing. Saves the generated prescriptions to an output_file_path csv file
     See 2020-08-01_2020-08-04_prescriptions_example.csv for an example
     """
-
     info(
         f"prescribing [{start_date_str}-{end_date_str}] [{path_to_prior_ips_file}] [{path_to_cost_file}] [{output_file_path}]")
 
     start_date = pd.to_datetime(start_date_str, format='%Y-%m-%d')
     end_date = pd.to_datetime(end_date_str, format='%Y-%m-%d')
+    n_days = (end_date - start_date).days + 1
+    print(f"prescribing for {n_days} days")
 
     # Load the past IPs data
     print("Loading past IPs data...")
@@ -106,14 +110,69 @@ def prescribe(start_date_str: str,
         geo_costs[geo] = cost_arr
 
     # perform iterations while we have a time-budget
-    prescribe_loop(geos, geo_costs, past_cases, past_ips)
+    prescribe_loop(geos,
+                   geo_costs,
+                   past_cases,
+                   past_ips,
+                   n_days)
 
 
-def prescribe_loop(geos, geo_costs, past_cases, past_ips):
+def prescribe_loop(geos,
+                   geo_costs,
+                   past_cases,
+                   past_ips,
+                   n_days):
     jobs = []
+    limits = NPI_LIMITS * n_days
+    populations = load_populations(geos)
     for geo in geos:
-        arguments = [geo, geo_costs[geo], past_cases[geo], past_ips[geo]]
+        arguments = [geo,
+                     geo_costs[geo],
+                     past_cases[geo],
+                     past_ips[geo],
+                     n_days,
+                     limits,
+                     populations[geo]]
         jobs.append(arguments)
     with multiprocessing.Pool(processes=THREADS) as pool:
         results = pool.starmap(prescribe_loop_for_geo, jobs)
     print(results)
+
+
+def load_populations(geos):
+    df = load_additional_context_df()
+    populations = {}
+    for geo in geos:
+        populations[geo] = df.loc[df['GeoID'] == geo]['Population'].max()
+    return populations
+
+
+def load_additional_context_df():
+    # File containing the population for each country
+    # Note: this file contains only countries population, not regions
+    additional_context_df = pd.read_csv(ADDITIONAL_CONTEXT_FILE, usecols=['CountryName', 'Population'])
+    additional_context_df['GeoID'] = additional_context_df['CountryName'] + '__'
+
+    # US states population
+    additional_us_states_df = pd.read_csv(ADDITIONAL_US_STATES_CONTEXT, usecols=['NAME', 'POPESTIMATE2019'])
+    # Rename the columns to match measures_df ones
+    additional_us_states_df.rename(columns={'POPESTIMATE2019': 'Population'}, inplace=True)
+
+    # Prefix with country name to match measures_df
+    additional_us_states_df['GeoID'] = US_PREFIX + additional_us_states_df['NAME']
+
+    # Append the new data to additional_df
+    additional_context_df = additional_context_df.append(additional_us_states_df)
+
+    # UK population
+    additional_uk_df = pd.read_csv(ADDITIONAL_UK_CONTEXT)
+    # Append the new data to additional_df
+    additional_context_df = additional_context_df.append(additional_uk_df)
+
+    # Brazil population
+    additional_brazil_df = pd.read_csv(ADDITIONAL_BRAZIL_CONTEXT)
+    # Append the new data to additional_df
+    additional_context_df = additional_context_df.append(additional_brazil_df)
+
+    additional_context_df['GeoID'] = additional_context_df['GeoID'].apply(lambda x: x.replace(' / ', '__'))
+    return additional_context_df

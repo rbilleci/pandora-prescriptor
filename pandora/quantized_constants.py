@@ -1,4 +1,4 @@
-QUANTIZED_FILE = "quantized_model.tflite"
+QUANTIZED_FILE = "pandora/quantized_model.tflite"
 
 # test with ~90 days
 START_DATE = "2020-08-01"

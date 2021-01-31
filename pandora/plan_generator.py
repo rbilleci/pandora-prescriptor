@@ -1,3 +1,5 @@
+from datetime import time
+
 import numpy as np
 
 from pandora.quantized_constants import NPI_LIMITS, C1_MAX, C2_MAX, C3_MAX, C4_MAX, C5_MAX, C6_MAX, \
@@ -56,12 +58,12 @@ def generate_plans(n_plans: int,
     plans = []
     for i in range(n_plans):
         candidates = []
-        for _ in range(n_candidates_per_plan):
+        for j in range(n_candidates_per_plan):
             bin_min = bin_size * bin_index
             bin_max = bin_size * (bin_index + 1)
             bin_index += 1
             plan, cost = generate_plan(days, factors, limits, bin_min, bin_max)
-            candidates.append((plan, cost))
+            candidates.append([plan, cost])
         plans.append(candidates)
     return plans
 
@@ -127,6 +129,7 @@ def generate_plan(days: int,
 
 
 """
+
 w = [1.000000] * len(NPI_LIMITS) * 90
 lim = NPI_LIMITS * 90
 fac = w.copy()
@@ -143,5 +146,4 @@ stop = time.time_ns()
 print(len(my_plans[0]))
 time_total = float(stop - start) / 1e9
 print(f"time was {time_total}")
-
 """
