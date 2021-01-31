@@ -2,7 +2,7 @@ import logging
 import multiprocessing
 import os
 import time
-from datetime import datetime, timedelta
+from datetime import datetime
 from logging import info
 
 import numpy as np
@@ -12,7 +12,7 @@ from covid_xprize.examples.prescriptors.neat.utils import load_ips_file, add_geo
     get_predictions, prepare_historical_df
 from covid_xprize.standard_predictor.xprize_predictor import ADDITIONAL_BRAZIL_CONTEXT, ADDITIONAL_UK_CONTEXT, \
     US_PREFIX, ADDITIONAL_US_STATES_CONTEXT, ADDITIONAL_CONTEXT_FILE
-from pandora.quantized_constants import NPI_LIMITS, C1, H6, C2, C3, C4, C5, C6, C7, C8, H1, H2, H3
+from pandora.quantized_constants import NPI_LIMITS
 from prescribe_handler_process import prescribe_loop_for_geo
 
 THREADS = 2
@@ -116,8 +116,7 @@ def prescribe(start_date_str: str,
                    past_ips,
                    n_days,
                    output_file_path,
-                   start_date,
-                   end_date)
+                   start_date)
 
 
 def prescribe_loop(geos,
@@ -126,8 +125,7 @@ def prescribe_loop(geos,
                    past_ips,
                    n_days: int,
                    output_file_path: str,
-                   start_date,
-                   end_date):
+                   start_date):
     jobs = []
     limits = NPI_LIMITS * n_days
     populations = load_populations(geos)

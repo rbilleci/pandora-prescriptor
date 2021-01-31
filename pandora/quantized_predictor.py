@@ -9,8 +9,12 @@ from pandora.quantized_constants import QUANTIZED_FILE
 class QuantizedPredictor(object):
 
     def __init__(self):
-        self.quantized_predictor = tf.lite.Interpreter(QUANTIZED_FILE)
-        self.quantized_predictor.allocate_tensors()
+        try:
+            self.quantized_predictor = tf.lite.Interpreter(QUANTIZED_FILE)
+            self.quantized_predictor.allocate_tensors()
+        except ValueError:
+            self.quantized_predictor = tf.lite.Interpreter(f"work/{QUANTIZED_FILE}")
+            self.quantized_predictor.allocate_tensors()
         print('quantized model ready')
 
     def predict_geo(self,
