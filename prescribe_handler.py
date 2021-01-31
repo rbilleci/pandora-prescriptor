@@ -42,21 +42,21 @@ def prescribe(start_date_str: str,
     :return: Nothing. Saves the generated prescriptions to an output_file_path csv file
     See 2020-08-01_2020-08-04_prescriptions_example.csv for an example
     """
-    info(
-        f"prescribe [{start_date_str}-{end_date_str}] [{path_to_prior_ips_file}] [{path_to_cost_file}] [{output_file_path}]")
+    info(f"prescription started @ {datetime.now()}")
+    info(f"prescription from {start_date_str} to {end_date_str}")
+    info(f"prescription with past IPS:   {path_to_prior_ips_file}")
+    info(f"prescription with past costs: {path_to_cost_file}")
+    info(f"prescription with output to:  {output_file_path}")
 
     start_date = pd.to_datetime(start_date_str, format='%Y-%m-%d')
     end_date = pd.to_datetime(end_date_str, format='%Y-%m-%d')
     n_days = (end_date - start_date).days + 1
-    print(f"prescribing for {n_days} days")
 
     # Load the past IPs data
-    print("Loading past IPs data...")
     past_ips_df = load_ips_file(path_to_prior_ips_file)
     geos = past_ips_df['GeoID'].unique()
 
     # Load historical data with basic preprocessing
-    print("Loading historical data...")
     df = prepare_historical_df()
 
     # Restrict it to dates before the start_date
@@ -83,7 +83,7 @@ def prescribe(start_date_str: str,
     last_historical_data_date = pd.to_datetime(last_historical_data_date_str,
                                                format='%Y-%m-%d')
     if last_historical_data_date + pd.Timedelta(days=1) < start_date:
-        print("Filling in missing data...")
+        info("Filling in missing data...")
         missing_data_start_date = last_historical_data_date + pd.Timedelta(days=1)
         missing_data_start_date_str = datetime.strftime(missing_data_start_date, format='%Y-%m-%d')
         missing_data_end_date = start_date - pd.Timedelta(days=1)
@@ -97,7 +97,7 @@ def prescribe(start_date_str: str,
             pred_cases_arr = np.array(geo_df[PRED_CASES_COL])
             past_cases[geo] = np.append(past_cases[geo], pred_cases_arr)
     else:
-        print("No missing data.")
+        info("No missing data.")
 
     # Load IP costs to condition prescriptions
     cost_df = pd.read_csv(path_to_cost_file)
@@ -117,6 +117,7 @@ def prescribe(start_date_str: str,
                    n_days,
                    output_file_path,
                    start_date)
+    info(f"prescription ended @ {datetime.now()}")
 
 
 def prescribe_loop(geos,

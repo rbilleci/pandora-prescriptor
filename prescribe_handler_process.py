@@ -18,7 +18,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s\t%(levelname)s\t%(fi
 logging.getLogger().handlers = [logging.FileHandler(f"logs/prescribe-{time.strftime('%Y-%m-%d')}"),
                                 logging.StreamHandler()]
 PRESCRIPTION_INDEXES = 10
-PRESCRIPTION_CANDIDATES_PER_INDEX = 10
+PRESCRIPTION_CANDIDATES_PER_INDEX = 50
 
 quantized_predictor = pandora.quantized_predictor.QuantizedPredictor()
 
