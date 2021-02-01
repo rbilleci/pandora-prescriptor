@@ -8,10 +8,10 @@ from logging import info
 import numpy as np
 import pandas as pd
 
-from covid_xprize.examples.prescriptors.neat.utils import load_ips_file, add_geo_id, CASES_COL, IP_COLS, PRED_CASES_COL, \
-    get_predictions, prepare_historical_df
+from covid_xprize.examples.prescriptors.neat.utils import load_ips_file, add_geo_id, CASES_COL, IP_COLS, \
+    PRED_CASES_COL, prepare_historical_df
 from covid_xprize.standard_predictor.xprize_predictor import ADDITIONAL_BRAZIL_CONTEXT, ADDITIONAL_UK_CONTEXT, \
-    US_PREFIX, ADDITIONAL_US_STATES_CONTEXT, ADDITIONAL_CONTEXT_FILE
+    US_PREFIX, ADDITIONAL_US_STATES_CONTEXT, ADDITIONAL_CONTEXT_FILE, XPrizePredictor
 from pandora.prescription_generator import PrescriptionGenerator
 from pandora.quantized_constants import NPI_LIMITS, THREADS, PRESCRIPTION_CANDIDATES_PER_INDEX_RUN_1, \
     PRESCRIPTION_CANDIDATES_PER_INDEX_RUN_2
@@ -44,6 +44,8 @@ def prescribe(start_date_str: str,
     geos = past_ips_df['GeoID'].unique()
 
     # Load historical data with basic preprocessing
+
+    standard_predictor = XPrizePredictor()
     df = prepare_historical_df()
 
     # Restrict it to dates before the start_date
@@ -75,9 +77,9 @@ def prescribe(start_date_str: str,
         missing_data_start_date_str = datetime.strftime(missing_data_start_date, format='%Y-%m-%d')
         missing_data_end_date = start_date - pd.Timedelta(days=1)
         missing_data_end_date_str = datetime.strftime(missing_data_end_date, format='%Y-%m-%d')
-        pred_df = get_predictions(missing_data_start_date_str,
-                                  missing_data_end_date_str,
-                                  past_ips_df)
+        pred_df = standard_predictor.predict_from_df(missing_data_start_date_str,
+                                                     missing_data_end_date_str,
+                                                     past_ips_df)
         pred_df = add_geo_id(pred_df)
         for geo in geos:
             geo_df = pred_df[pred_df['GeoID'] == geo].sort_values(by='Date')
