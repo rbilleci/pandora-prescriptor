@@ -1,12 +1,13 @@
 # Copyright 2020 (c) Cognizant Digital Business, Evolutionary AI. All rights reserved. Issued under the Apache 2.0 License.
 
 import os
-import subprocess
 import tempfile
 import urllib.request
-import pandas as pd
 from pathlib import Path
 
+import pandas as pd
+
+from covid_xprize.standard_predictor.xprize_predictor import XPrizePredictor
 from covid_xprize.validation.scenario_generator import get_raw_data, generate_scenario
 
 # URL for Oxford data
@@ -117,26 +118,8 @@ def get_predictions(start_date_str, end_date_str, pres_df, countries=None):
     ips_df = pd.concat([hist_df, pres_df])
 
     with tempfile.NamedTemporaryFile() as tmp_ips_file:
-        # Write ips_df to file
+        xp = XPrizePredictor()
         ips_df.to_csv(tmp_ips_file.name)
+        x = xp.predict(start_date_str, end_date_str, tmp_ips_file.name)
 
-        with tempfile.NamedTemporaryFile() as tmp_pred_file:
-            # Run script to generate predictions
-            output_str = subprocess.check_output(
-                [
-                    'python', PREDICT_MODULE,
-                    '--start_date', start_date_str,
-                    '--end_date', end_date_str,
-                    '--interventions_plan', tmp_ips_file.name,
-                    '--output_file', tmp_pred_file.name
-                ],
-                stderr=subprocess.STDOUT
-            )
-
-            # Print output from running script
-            print(output_str.decode("utf-8"))
-
-            # Load predictions to return
-            df = pd.read_csv(tmp_pred_file)
-
-    return df
+    return x
