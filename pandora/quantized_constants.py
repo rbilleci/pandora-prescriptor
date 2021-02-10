@@ -1,6 +1,6 @@
 PRESCRIPTION_INDEXES = 10
-PRESCRIPTION_CANDIDATES_PER_INDEX_RUN_1 = 45  # keep it low enough to complete within 1 hour
-PRESCRIPTION_CANDIDATES_PER_INDEX_RUN_2 = 200  # for the additional 5 hours
+PRESCRIPTION_CANDIDATES_PER_INDEX_RUN_1 = 10  # 45  # keep it low enough to complete within 1 hour
+PRESCRIPTION_CANDIDATES_PER_INDEX_RUN_2 = 50  # 200  # for the additional 5 hours
 THREADS = 2
 QUANTIZED_FILE = "pandora/quantized_model.tflite"
 
